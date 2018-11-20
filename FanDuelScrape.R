@@ -52,3 +52,60 @@ get_FD_Between <- function(startdate, enddate) {
   return(all_data)
 }
 
+
+
+
+
+
+
+
+---------
+
+et_RPM <- function(page, season = "2018"){
+  Sys.sleep(2)
+  url <- paste0("http://www.espn.com/nba/statistics/rpm/_/year/",season,"/page/",as.character(page),"/sort/RPM")
+  download.file(url,"rpm.html")
+  rpms <- read_html("rpm.html") %>% html_node(".mod-content table") %>% html_table(header = TRUE) %>% data.frame(stringsAsFactors = FALSE)
+  rpms <- rpms %>% mutate_at(vars(GP:WINS), funs(as.numeric))
+  rpms <- rpms %>% separate(NAME, c("PLAYER","POS"), ",")
+  return(rpms)
+}
+
+get_all_RPM_Season <- function(season = "2018", pages = 12) {
+  pages <- seq(1:pages)
+  all_rpms <- lapply(pages, get_RPM, season = season) %>% do.call(rbind,.)
+  return(all_rpms)
+}
+
+get_schedule <- function() {
+  read.csv("schedule.csv") -> schedule
+  return(schedule)
+}
+
+get_MPG <- function(season = 2018, type = "per_game"){
+  
+  link <- paste0('https://www.basketball-reference.com/leagues/NBA_',as.character(season),'_',type,'.html')
+  download.file(link, destfile = "stats.html")
+  
+  statsdf <- read_html("stats.html") %>% html_nodes('.stats_table') %>% html_table() %>% data.frame() %>% filter(Rk != 'Rk')
+  statsdf$Season <- as.character(season)
+  statsdf$Type <- type
+  
+  if(type == "advanced") {
+    statsdf<- statsdf %>% mutate_at(vars(Age,G:VORP),funs(as.numeric)) 
+  }
+  
+  else if(type == "per_poss") {
+    statsdf<- statsdf %>% mutate_at(vars(Age,G:DRtg),funs(as.numeric)) 
+  }
+  
+  else if(type == "per_game") {
+    statsdf<- statsdf %>% mutate_at(vars(Age,G:PF),funs(as.numeric)) 
+  }
+  
+  else {
+    statsdf<- statsdf %>% mutate_at(vars(Age,G:PTS),funs(as.numeric)) 
+  }
+  
+  return(statsdf)
+}
